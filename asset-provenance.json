@@ -19,7 +19,7 @@
       "source": {
         "starterId": "game-generic-v56"
       },
-      "status": "awaiting-restoration",
+      "status": "present",
       "transformations": [],
       "useEvidence": [
         "project.godot",
@@ -47,7 +47,7 @@
       "source": {
         "starterId": "game-generic-v56"
       },
-      "status": "awaiting-restoration",
+      "status": "present",
       "transformations": [],
       "useEvidence": [
         "scripts/entities/sentinel.gd",
@@ -72,7 +72,7 @@
       "source": {
         "starterId": "game-generic-v56"
       },
-      "status": "awaiting-restoration",
+      "status": "present",
       "transformations": [],
       "useEvidence": [
         "scripts/main.gd"
@@ -96,7 +96,7 @@
       "source": {
         "starterId": "game-generic-v56"
       },
-      "status": "awaiting-restoration",
+      "status": "present",
       "transformations": [],
       "useEvidence": [
         "scripts/main.gd"
@@ -122,7 +122,7 @@
       "source": {
         "starterId": "game-generic-v56"
       },
-      "status": "awaiting-restoration",
+      "status": "present",
       "transformations": [],
       "useEvidence": [
         "assets/template/fonts/ui_bold.tres",
@@ -183,7 +183,7 @@
       "source": {
         "starterId": "game-generic-v56"
       },
-      "status": "awaiting-restoration",
+      "status": "present",
       "transformations": [],
       "useEvidence": [
         "assets/template/fonts/display/generic_eyebrow.tres",
@@ -212,7 +212,7 @@
       "source": {
         "starterId": "game-generic-v56"
       },
-      "status": "awaiting-restoration",
+      "status": "present",
       "transformations": [],
       "useEvidence": [
         "scripts/game/maze_world.gd",
@@ -238,7 +238,7 @@
       "source": {
         "starterId": "game-generic-v56"
       },
-      "status": "awaiting-restoration",
+      "status": "present",
       "transformations": [],
       "useEvidence": [
         "scripts/game/maze_world.gd"
@@ -263,7 +263,7 @@
       "source": {
         "starterId": "game-generic-v56"
       },
-      "status": "awaiting-restoration",
+      "status": "present",
       "transformations": [],
       "useEvidence": [
         "scripts/game/maze_world.gd",
@@ -289,7 +289,7 @@
       "source": {
         "starterId": "game-generic-v56"
       },
-      "status": "awaiting-restoration",
+      "status": "present",
       "transformations": [],
       "useEvidence": [
         "scripts/game/maze_world.gd",
@@ -314,7 +314,7 @@
       "source": {
         "starterId": "game-generic-v56"
       },
-      "status": "awaiting-restoration",
+      "status": "present",
       "transformations": [],
       "useEvidence": [
         "scripts/game/maze_world.gd"
@@ -362,7 +362,7 @@
       "source": {
         "starterId": "game-generic-v56"
       },
-      "status": "awaiting-restoration",
+      "status": "present",
       "transformations": [],
       "useEvidence": [
         "scripts/main.gd"
@@ -386,7 +386,7 @@
       "source": {
         "starterId": "game-generic-v56"
       },
-      "status": "awaiting-restoration",
+      "status": "present",
       "transformations": [],
       "useEvidence": [
         "scripts/main.gd"
@@ -479,7 +479,107 @@
       "retained": 0,
       "shipped": null,
       "used": 0
+    },
+    "visualCoverage": {
+      "approvedRevision": 3,
+      "blueprintId": "gbp_c046c0882ccf746612d10300",
+      "committedRoles": 5,
+      "expectedDigest": "f1b5f2c93aa5893877f52c41c8fe5e9d225da9764bed02550d598ee06260f76d",
+      "fulfilledRoles": 0,
+      "roles": [
+        {
+          "id": "gusano_jugador",
+          "reasons": [
+            "unresolved"
+          ],
+          "status": "unresolved"
+        },
+        {
+          "id": "gusanos_rivales",
+          "reasons": [
+            "unresolved"
+          ],
+          "status": "unresolved"
+        },
+        {
+          "id": "comida_recogible",
+          "reasons": [
+            "unresolved"
+          ],
+          "status": "unresolved"
+        },
+        {
+          "id": "arena_jugable",
+          "reasons": [
+            "unresolved"
+          ],
+          "status": "unresolved"
+        },
+        {
+          "id": "hud_partida",
+          "reasons": [
+            "unresolved"
+          ],
+          "status": "unresolved"
+        }
+      ],
+      "search": {
+        "checkedPages": 0,
+        "outcomes": 0,
+        "overflowEvents": 0,
+        "requests": 0
+      },
+      "selectedButUnusedAssets": [],
+      "staleRenderedEvidence": [],
+      "status": "incomplete",
+      "unexplainedFallbacks": [],
+      "unresolvedRoles": [
+        "gusano_jugador",
+        "gusanos_rivales",
+        "comida_recogible",
+        "arena_jugable",
+        "hud_partida"
+      ],
+      "visualQuality": "requires_agent_review"
     }
   },
-  "version": 1
+  "version": 1,
+  "visualCoverage": {
+    "attempts": {},
+    "expected": {
+      "approvedRevision": 3,
+      "blueprintId": "gbp_c046c0882ccf746612d10300",
+      "digest": "f1b5f2c93aa5893877f52c41c8fe5e9d225da9764bed02550d598ee06260f76d",
+      "roles": [
+        {
+          "description": "Tu personaje principal 2D, claramente distinguible y preparado para representar movimiento fluido, crecimiento y colisión en la arena.",
+          "id": "gusano_jugador",
+          "label": "Gusano del jugador"
+        },
+        {
+          "description": "Oponentes 2D controlados por el juego, legibles frente a tu gusano y con movimiento compatible con la detección clara de colisiones.",
+          "id": "gusanos_rivales",
+          "label": "Gusanos rivales"
+        },
+        {
+          "description": "Objetos 2D pequeños pero visibles que tu gusano puede recoger para crecer y aumentar la puntuación.",
+          "id": "comida_recogible",
+          "label": "Comida recogible"
+        },
+        {
+          "description": "Superficie 2D sencilla y no distractora que delimita y sostiene el espacio de juego sin añadir escenarios opcionales innecesarios.",
+          "id": "arena_jugable",
+          "label": "Arena de juego"
+        },
+        {
+          "description": "Interfaz clara en español para mostrar tu puntuación y comunicar el fin de la partida y la opción de reiniciar rápidamente.",
+          "id": "hud_partida",
+          "label": "HUD de puntuación y estado"
+        }
+      ]
+    },
+    "overflowEvents": 0,
+    "resolutions": {},
+    "version": 1
+  }
 }

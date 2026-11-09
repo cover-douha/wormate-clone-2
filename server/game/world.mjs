@@ -18,6 +18,15 @@ export class GameWorld {
     this.bots = new Map(); // id -> { state: 'WANDER'|'SEEK_FOOD'|'AVOID_HEAD', timer }
     this._inputs = new Map(); // id -> input pendiente
     this._pendingDeaths = [];
+    // v0.4.7: campos publicos para que los tests no necesiten subclass
+    // con override de tick(). Se resetean al inicio de cada tick y se llenan
+    // durante la aplicacion de muertes. lastFoodDrops refleja los drops
+    // generados en este tick (tanto por muerte como por boost).
+    this.lastDeaths = [];
+    this.lastFoodDrops = [];
+    // v0.4.7: tracking de worms muertas para respawn automatico tras RESPAWN_MS.
+    // Map<id, diedAt: number ms epoch>
+    this._deadWorms = new Map();
     this._spawnBots(8); // H1: 8 bots tontos para probar single-player
     this.food.spawn();
   }
@@ -109,8 +118,14 @@ export class GameWorld {
 
   tick(dt, seq) {
     this.seq = seq;
+    // Reset campos publicos del tick anterior (v0.4.7)
+    this.lastDeaths = [];
+    this.lastFoodDrops = [];
     this._applyPlayerInputs();
     this._tickBots(dt);
+
+    // Respawn automatico: worms muertas cuyo tiempo > RESPAWN_MS reviven
+    this._autoRespawnDeadWorms();
 
     // Mover gusanos
     for (const w of this.worms.values()) {
@@ -182,11 +197,20 @@ export class GameWorld {
       const w = this.worms.get(d.dead);
       if (!w) continue;
       processed.add(d.dead);
+      const wasAlive = w.alive;
       if (w.alive) w.die();
-      this._dropWormFood(w);
+      // Drop de comida por muerte: 1 de cada FOOD_FROM_DEATH_SEGMENTS_RATIO
+      // segmentos del path se convierte en comida. Posiciones aprox del path.
+      const dropped = this._dropWormFood(w);
+      for (const drop of dropped) this.lastFoodDrops.push(drop);
       deaths.push({ playerId: w.id, by: d.by });
+      // Registrar como muerta para respawn automatico
+      if (!this._deadWorms.has(w.id)) {
+        this._deadWorms.set(w.id, Date.now());
+      }
     }
     this._pendingDeaths = [];
+    this.lastDeaths = deaths;
 
     return {
       seq,
@@ -198,8 +222,36 @@ export class GameWorld {
   }
 
   _dropWormFood(w) {
+    // Devuelve array de drops creados (para verificacion en tests / tracking).
+    // Ratio configurable: 1 de cada FOOD_FROM_DEATH_SEGMENTS_RATIO segmentos.
+    // Default 3 (un gusano de 30 segmentos deja ~10 pellets).
+    const ratio = WORLD.FOOD_FROM_DEATH_SEGMENTS_RATIO || 3;
+    const drops = [];
+    let i = 0;
     for (const seg of w.path) {
-      if (Math.random() < 0.5) this.food.addDrop({ x: seg.x, y: seg.y, value: 1 });
+      if (i % ratio === 0) {
+        this.food.addDrop({ x: seg.x, y: seg.y, value: 1 });
+        drops.push({ x: seg.x, y: seg.y, value: 1 });
+      }
+      i++;
+    }
+    return drops;
+  }
+
+  _autoRespawnDeadWorms() {
+    // Recorre worms muertas; si paso RESPAWN_MS desde su muerte, las revive.
+    // Excluye worms cuyo id ya no esta en this.worms (p.ej. jugador
+    // desconectado via removePlayer).
+    const now = Date.now();
+    for (const [id, diedAt] of this._deadWorms) {
+      if (now - diedAt < WORLD.RESPAWN_MS) continue;
+      if (!this.worms.has(id)) {
+        // El worm fue removida del mundo; limpiar tracking.
+        this._deadWorms.delete(id);
+        continue;
+      }
+      this._respawn(id);
+      this._deadWorms.delete(id);
     }
   }
 
@@ -216,6 +268,7 @@ export class GameWorld {
 
   _leaderboard() {
     return Array.from(this.worms.values())
+      .filter((w) => w.alive) // v0.4.7: excluir muertas del leaderboard
       .sort((a, b) => b.mass - a.mass)
       .slice(0, 10)
       .map((w) => ({ id: w.id, score: w.mass, name: w.name }));

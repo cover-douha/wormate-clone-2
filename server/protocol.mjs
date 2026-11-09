@@ -23,6 +23,7 @@ export const WORLD = {
   BOOST_MASS_COST_PER_SEC: 0.5,
   RESPAWN_MS: 2000,
   HEAD_VS_HEAD: 'BOTH_DIE',
+  FOOD_FROM_DEATH_SEGMENTS_RATIO: 3, // 1 de cada N segmentos del path se vuelve comida al morir
 };
 
 // Constantes de predicción (ADR-006 v2)

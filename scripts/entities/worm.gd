@@ -45,6 +45,17 @@ var _segment_nodes: Array = []  # Array[Node2D] — nodos visuales
 var _boost_accumulator: float = 0.0
 var _body_color: Color = Color(1.0, 0.8, 0.3)  # amarillo cálido por defecto (jugador)
 
+# v0.4.11 ADR-010: estado de reconciliación
+# _reconcile_state: "idle" = sin blend pendiente, "blending" = blend suave,
+#   "snap_soft" = tween 100ms hacia target
+var _reconcile_state: String = "idle"
+var _reconcile_target: Vector2 = Vector2.ZERO
+var _snap_soft_start: Vector2 = Vector2.ZERO
+var _snap_soft_timer: float = 0.0
+const SNAP_SOFT_DURATION: float = 0.1  # 100 ms
+const SNAP_UMBRAL: float = 18.0       # u — de ADR-006 v2
+const SNAP_SOFT_UMBRAL: float = 100.0 # u — de ADR-010 §3
+
 # Stub visual: el sprite real vendra del catalogo de skins. Por ahora ColorRect.
 static func make_segment_visual(color: Color, scale: float = 1.0) -> Node2D:
 	var n := Node2D.new()
@@ -157,51 +168,85 @@ func die() -> void:
 		alive = false
 		died.emit()
 
-func reconcile_from_snapshot(s: Dictionary) -> void:
-	# FIX #2: H2 — reconstruir _segments desde head+angle+length (path-sampling
-	# puro, ADR-006 Opción 1). No conservamos el follow-the-leader state local
-	# porque el servidor es autoritativo y solo manda head+angle+length.
+func reconcile_from_snapshot(s: Dictionary, dt: float = 0.016) -> void:
+	# v0.4.11 ADR-010 §3: reconciliación con 3 umbrales.
+	# delta < 18u → blend suave (1 - exp(-dt/0.10))
+	# 18u ≤ delta < 100u → snap suave 100ms
+	# delta ≥ 100u → snap duro
+	# §5: cliente nunca mata — solo marca alive=false si server dice alive=false.
 	if not s.get("alive", true):
 		if alive:
 			died.emit()
 		alive = false
 		return
-	var new_head := Vector2(
-		s.get("head", {}).get("x", head.x),
-		s.get("head", {}).get("y", head.y)
+	var server_head := Vector2(
+		float(s.get("head", {}).get("x", head.x)),
+		float(s.get("head", {}).get("y", head.y))
 	)
-	var new_angle: float = s.get("angle", angle)
-	var new_length: int = int(s.get("length", length))
-	var new_mass: float = float(s.get("mass", mass))
-	var new_boost: bool = bool(s.get("boost", false))
-	# Aplicar
-	head = new_head
-	angle = new_angle
-	length = new_length
-	mass = new_mass
-	boost = new_boost
-	# Reconstruir _segments desde cero: cabeza + N-1 segmentos hacia atrás
-	# según angle (cuerpo sigue la dirección opuesta al avance).
-	# Esto es una aproximación; el servidor puede enviar path completo a 1Hz
-	# para corrección fina (ADR-006).
-	var need_rebuild := _segments.size() != length
-	if need_rebuild:
-		# Ajustar nodos visuales
-		while _segment_nodes.size() < length:
-			var node := make_segment_visual(_body_color, 0.85)
-			add_child(node)
-			_segment_nodes.append(node)
-		while _segment_nodes.size() > length:
-			var node = _segment_nodes.pop_back()
-			if is_instance_valid(node):
-				node.queue_free()
-		_segments.resize(length)
-	# Llenar posiciones: cabeza en [0], resto hacia atrás según angle
+	# Aplicar angle, mass, boost directamente (no necesitan reconciliación)
+	angle = float(s.get("angle", angle))
+	mass = float(s.get("mass", mass))
+	boost = bool(s.get("boost", false))
+	var new_length := int(s.get("length", length))
+	# §3: umbrales sobre delta de head
+	var delta: float = head.distance_to(server_head)
+	if delta < SNAP_UMBRAL:
+		# Blend suave frame-rate independent
+		# Si dt == 0 (snapshot sin contexto), usar 0.15 (default 60 FPS)
+		var blend_factor: float = 0.15 if dt <= 0.0 else (1.0 - exp(-dt / 0.10))
+		head = head.lerp(server_head, blend_factor)
+		_reconcile_state = "blending"
+		_reconcile_target = server_head
+	elif delta < SNAP_SOFT_UMBRAL:
+		# Snap suave 100ms
+		_reconcile_state = "snap_soft"
+		_snap_soft_start = head
+		_reconcile_target = server_head
+		_snap_soft_timer = 0.0
+	else:
+		# Snap duro: teleport
+		head = server_head
+		_reconcile_state = "idle"
+	# Length cambió → reconstruct path
+	if new_length != length:
+		length = new_length
+		reconstruct_path()
+	else:
+		# Si head cambió (cualquier tier), actualizar segmentos visualmente
+		reconstruct_path()
+
+func _process_reconciliation(dt: float) -> void:
+	# Llamado desde arena._process para cada worm en modo H2.
+	# Continúa blend/snap_soft pendientes.
+	if _reconcile_state == "snap_soft":
+		_snap_soft_timer += dt
+		var t: float = clampf(_snap_soft_timer / SNAP_SOFT_DURATION, 0.0, 1.0)
+		head = _snap_soft_start.lerp(_reconcile_target, t)
+		if t >= 1.0:
+			_reconcile_state = "idle"
+		reconstruct_path()
+	elif _reconcile_state == "blending":
+		head = head.lerp(_reconcile_target, 1.0 - exp(-dt / 0.10))
+		if head.distance_to(_reconcile_target) < 1.0:
+			_reconcile_state = "idle"
+		reconstruct_path()
+
+func reconstruct_path() -> void:
+	# ADR-010 §4: reconstruir _segments desde head+angle+length a SEG_SPACING.
+	# Reemplaza _rebuild_segments follow-the-leader (era H1 only).
+	while _segment_nodes.size() < length:
+		var node := make_segment_visual(_body_color, 1.0 if _segment_nodes.size() == 0 else 0.85)
+		add_child(node)
+		_segment_nodes.append(node)
+	while _segment_nodes.size() > length:
+		var node = _segment_nodes.pop_back()
+		if is_instance_valid(node):
+			node.queue_free()
+	_segments.resize(length)
 	if _segments.size() > 0:
 		_segments[0] = head
 	for i in range(1, length):
 		_segments[i] = head - Vector2(cos(angle), sin(angle)) * SEG_SPACING * float(i)
-	# Sincronizar visuales
 	for i in range(min(_segment_nodes.size(), _segments.size())):
 		if is_instance_valid(_segment_nodes[i]):
 			_segment_nodes[i].position = _segments[i]

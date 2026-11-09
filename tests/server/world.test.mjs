@@ -161,6 +161,8 @@ describe('GameWorld — leaderboard', () => {
 
   it('leaderboard incluye name y score ademas de id', () => {
     const w = mkWorldNoBots();
+    // Limpiar comida para que el worm no crezca durante el tick y el score sea determinista
+    w.food.items.clear();
     spawnWormAt(w, 'p1', 200, 200, { name: 'Alice' });
     w.worms.get('p1').mass = 100;
     const snap = w.tick(0.05, 1);

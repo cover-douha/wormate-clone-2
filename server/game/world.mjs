@@ -114,7 +114,13 @@ export class GameWorld {
 
     // Mover gusanos
     for (const w of this.worms.values()) {
-      if (w.alive) w.tick(dt);
+      if (!w.alive) continue;
+      w.tick(dt);
+      // Worm.tick puede matar por borde (sin killer). Surfacerlo en pendingDeaths
+      // para que el snapshot incluya el evento y el cliente/HUD reaccione.
+      if (!w.alive) {
+        this._pendingDeaths.push({ dead: w.id, by: null });
+      }
     }
 
     // Indexar segmentos en el grid
@@ -165,11 +171,18 @@ export class GameWorld {
     }
 
     // Aplicar muertes (R4: solo servidor)
+    // Set evita doble-proceso: una worm puede aparecer en _pendingDeaths por
+    // borde + colision simultaneamente. Tambien permite procesar worms que
+    // murieron durante tick() (p.ej. por borde) — w.alive ya es false pero
+    // aun no han sido procesadas para drop de comida ni evento de muerte.
     const deaths = [];
+    const processed = new Set();
     for (const d of this._pendingDeaths) {
+      if (processed.has(d.dead)) continue;
       const w = this.worms.get(d.dead);
-      if (!w || !w.alive) continue;
-      w.die();
+      if (!w) continue;
+      processed.add(d.dead);
+      if (w.alive) w.die();
       this._dropWormFood(w);
       deaths.push({ playerId: w.id, by: d.by });
     }

@@ -24,6 +24,7 @@ export const WORLD = {
   RESPAWN_MS: 2000,
   HEAD_VS_HEAD: 'BOTH_DIE',
   FOOD_FROM_DEATH_SEGMENTS_RATIO: 3, // 1 de cada N segmentos del path se vuelve comida al morir
+  MAX_TURN_PER_SEC: 4.0, // rad/s — límite angular de giro del worm (cliente y servidor)
 };
 
 // Constantes de predicción (ADR-006 v2)

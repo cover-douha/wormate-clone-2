@@ -22,15 +22,16 @@ const WormType := preload("res://scripts/entities/worm.gd")
 const FoodType := preload("res://scripts/entities/food.gd")
 const WormConstants := preload("res://scripts/game/worm_constants.gd")
 
-const WORLD_W := 4000
-const WORLD_H := 4000
-const FOOD_CAP := 500
-const INITIAL_LENGTH := 10
-const BASE_SPEED := 120.0
-const RESPAWN_MS := 2000.0
-const HIT_RADIUS := 12.0
+# v0.4.9 fix #11: usar WormConstants (synced de protocol.mjs) en vez de hardcoded
+const WORLD_W := WormConstants.WIDTH
+const WORLD_H := WormConstants.HEIGHT
+const FOOD_CAP := WormConstants.FOOD_CAP
+const INITIAL_LENGTH := WormConstants.INITIAL_LENGTH
+const BASE_SPEED := WormConstants.BASE_SPEED
+const RESPAWN_MS := WormConstants.RESPAWN_MS
+const HIT_RADIUS := WormConstants.HIT_RADIUS
+const FOOD_FROM_DEATH_RATIO := WormConstants.FOOD_FROM_DEATH_SEGMENTS_RATIO
 const BOT_COUNT := 6
-const FOOD_FROM_DEATH_RATIO := 3
 const MAX_BOT_TARGETS := 5
 
 var player: Worm = null
@@ -233,7 +234,7 @@ func _drop_worm_food(worm: Worm) -> void:
 # ─── Respawn ────────────────────────────────────────────────────────────
 func _on_player_died() -> void:
 	game_state = "dead"
-	_dead_timer = RESPAWN_MS / 1000.0
+	_dead_timer = float(RESPAWN_MS) / 1000.0
 	game_state_changed.emit("dead")
 
 func _on_bot_died(bot: Worm) -> void:
@@ -283,3 +284,39 @@ func resume() -> void:
 	if game_state == "paused":
 		game_state = "playing"
 		game_state_changed.emit("playing")
+
+# ─── F7 stubs: leaderboard + minimap (H2 los consumirá desde snapshots servidor)
+func leaderboard() -> Array:
+	# Top-10 worms vivas ordenadas por masa desc.
+	var all: Array = []
+	if player and player.alive:
+		all.append({ "id": player.id, "name": player.worm_name, "score": int(player.mass) })
+	for bot in bots:
+		if bot.alive:
+			all.append({ "id": bot.id, "name": bot.worm_name, "score": int(bot.mass) })
+	all.sort_custom(func(a, b): return a.score > b.score)
+	return all.slice(0, min(10, all.size()))
+
+func minimap_data() -> Dictionary:
+	# Posiciones normalizadas a [0,1] para render del minimap.
+	# H2: el cliente puede renderizar esto en un Control esquina inferior derecha.
+	var data := { "player": null, "bots": [], "food_sample": [] }
+	if player:
+		data.player = {
+			"x": player.head.x / float(WORLD_W),
+			"y": player.head.y / float(WORLD_H),
+			"alive": player.alive
+		}
+	for bot in bots:
+		data.bots.append({
+			"x": bot.head.x / float(WORLD_W),
+			"y": bot.head.y / float(WORLD_H),
+			"alive": bot.alive
+		})
+	# Sample de comida (20 items para no mandar 500 al minimap)
+	var food_arr: Array = food_items.values()
+	var step := max(1, food_arr.size() / 20)
+	for i in range(0, food_arr.size(), step):
+		var f = food_arr[i]
+		data.food_sample.append({ "x": f.position.x / float(WORLD_W), "y": f.position.y / float(WORLD_H) })
+	return data

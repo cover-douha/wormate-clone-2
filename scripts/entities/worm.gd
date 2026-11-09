@@ -17,6 +17,7 @@ signal ate_food(amount: int)
 signal died
 
 const WormConstants := preload("res://scripts/game/worm_constants.gd")
+const SkinCatalog := preload("res://scripts/game/skin_catalog.gd")
 
 # Alias a constantes synced para legibilidad
 const SEG_SPACING := WormConstants.SEG_SPACING
@@ -66,11 +67,9 @@ func setup(p_id: String, p_name: String, p_skin: int, p_head: Vector2, p_angle: 
 	_init_segments()
 
 func _color_for_role(is_bot_arg: bool, skin_idx: int) -> Color:
-	# Paleta de visual-spec.md: jugador #FFCC4D, rival #D75B7D.
-	if is_bot_arg:
-		var bot_colors := [Color(0.84, 0.36, 0.49), Color(0.92, 0.43, 0.36), Color(0.78, 0.40, 0.55), Color(0.88, 0.50, 0.40)]
-		return bot_colors[skin_idx % bot_colors.size()]
-	return Color(1.0, 0.80, 0.30)
+	# v0.4.10: skins desde SkinCatalog (F8). 8 skins disponibles.
+	# Skin NO afecta hitbox — HIT_RADIUS se lee de WormConstants en worm_arena.gd.
+	return SkinCatalog.body_color(skin_idx)
 
 func _init_segments() -> void:
 	_segments.clear()
